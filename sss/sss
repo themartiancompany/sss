@@ -2,43 +2,71 @@
 #
 # SPDX-License-Identifier: AGPL-3.0
 
-# A simple workstation builder
-_sss() {
+_bin="$( \
+  dirname \
+    "$( \
+      command \
+        -v \
+	  "env")")"
+_lib="${_bin}/../lib"
+_share="${_bin}/../share"
+source \
+  "${_lib}/libcrash-bash/crash-bash"
 
-  _read_conf
-
+# shellcheck disable=SC2034
+_global_variables() {
+  target_host=""
+  session_name=""
+  color=""
+  quiet=""
 }
 
-_globals() {
-  _path="$( \
-    export \
-      _OLDPWD="$(pwd)" && \
-      cd \
-        "$( \
-          dirname \
-            "${BASH_SOURCE[0]}")" && \
-       echo \
-         "$(pwd)" && \
-       cd \
-         "${_OLDPWD}" && \
-       unset \
-         _OLDPWD)"
-  unset \
-    _OLDPWD
-  app_name="$( \
-    basename \
-      "${BASH_SOURCE[0]}")"
-  _conf_dir="${HOME}/.config/${app_name}"
-  [ ! -n "${TERMUX_VERSION}" ] && \
-    _user="dev"
+# Check all required programs
+# are available
+_requirements() {
+  local \
+    _deps=() \
+    _dep
   _deps=(
     'dynssh'
     'screen'
+    'hotnamectl'
   )
-  _dev='wlan0' # TODO: to get dynamically
-               #       from ifconfig
-  _port=2222   # TODO: to be random
-  _user='dev'  # Meh
+  for _dep \
+    in "${_deps[@]}"; do
+    _check_cmd \
+      "${_dep}"
+  done
+}
+
+# ssssssssssss
+# $1: target host
+# $2: session name
+# $@: command
+_sss() {
+  local \
+    _host="${1}" \
+    _session="${2}" \
+    _cmd=() \
+    _session_name
+  shift \
+    2
+  _cmd=(
+    "$@"
+  )
+  _session_name="${_host}_${_session}"
+  _existing="$( \
+    screen \
+      -ls | \
+    grep \
+      "${_session_name}")"
+  [[ "${_existing}" != "" ]] && \
+    screen \
+      -x \
+      "${_session_name}"
+
+  _read_conf
+
 }
 
 _read_conf() {
@@ -67,55 +95,134 @@ _read_conf() {
       1
 }
 
-_msg_err() {
-  local \
-    _msg=(
-      "$@"
-    )
-  echo \
-    "${_msg[*]}"
-  exit \
-    1
-}
-
-_check_cmd(){
+_check_cmd_override(){
   local \
     _cmd="${1}" \
     _cmd_var \
     _flag
-  _cmd_var="$(echo \
-                "${_cmd}" | \
-                sed \
-                  "s/-/_/g")"
+  _cmd_var="$( \
+    echo \
+      "${_cmd}" | \
+      sed \
+        "s/-/_/g")"
   command \
-     -v "${_cmd}" &> /dev/null && \
-    printf \
-      -v "_${_cmd_var}" \
-      "$(which \
-           "${_cmd}")" && \
-    _flag=true
+     -v \
+       "${_cmd}" &> \
+       /dev/null
+  printf \
+    -v \
+    "_${_cmd_var}" \
+    "$( \
+      which \
+        "${_cmd}")"
+  _flag=true
   [ -e "${_path}/${_cmd}" ] && \
     printf \
-      -v "_${_cmd_var}" \
+      -v \
+        "_${_cmd_var}" \
       "${_path}/${_cmd}" && \
     _flag=true
   [[ "${_flag}" != "true" ]] && \
-    _msg_err \
-      "Install ${_cmd}"
+    _msg_error \
+      "Install ${_cmd}" \
+      1
 }
 
-_check_deps() {
+_set_overrides() {
+  _set_override \
+    "target" \
+    "host" \
+    "$(hotnamectl)"
+  if [[ -v override_color ]]; then
+    color="${override_color}"
+  elif [[ -z "${color}" ]]; then
+    color="n"
+  fi
+  if [[ -v override_quiet ]]; then
+    quiet="${override_quiet}"
+  elif [[ -z "${quiet}" ]]; then
+    quiet="y"
+  fi
+}
+
+# Show help usage, with an exit status.
+# $1: exit status number.
+_usage() {
   local \
-    _dep
-  for _dep in "${_deps[@]}"; do
-    _check_cmd \
-      "${_dep}"
-  done
+    _usage_text
+  IFS='' \
+    read \
+      -r \
+      -d '' \
+      _usage_text << \
+        ENDUSAGETEXT || true
+Sssssssssssssssh
+
+Usage:
+  $(_get "app" "name")
+    [options]
+    <session_name>
+  options:
+     -t                   Target host.
+                          Default: $( \
+                            _get \
+                              "target" \
+                              "host")
+     -c                   Colors.
+     -h                   This message.
+     -v                   Enable verbose output
+ENDUSAGETEXT
+  _printf \
+    '%s\n' \
+    "${_usage_text}"
+  exit \
+    "${1}"
 }
 
 _globals
-_check_deps
+_global_variables
+_requirements
+# shellcheck disable=SC2004
+# shellcheck disable=SC2034
+while \
+  getopts \
+    't:cvh?' \
+    arg; do
+  case \
+    "${arg}" in
+    t) override_target_host="${OPTARG}" ;;
+    c) override_color="y" ;;
+    v) override_quiet="n" ;;
+    h|?) _set_overrides && \
+         _usage \
+           0 ;;
+    *)
+    _msg_error \
+      "Invalid argument '${arg}'" \
+      0
+    _usage \
+      1
+    ;;
+  esac
+done
+shift \
+  $(( \
+    OPTIND - 1 \
+  ))
+(( ${#} < 1 )) && \
+  _usage \
+    1
+_set \
+  "session" \
+  "name" \
+  "${1}"
 
 _sss
+  _get \
+    "target" \
+    "host" \
+  _get \
+    "session" \
+    "name"
 
 # vim:set sw=2 sts=-1 et:
