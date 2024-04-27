@@ -39,6 +39,53 @@ _requirements() {
   done
 }
 
+_screen_new() {
+  local \
+    _session="${1}" \
+    _local="${2}" \
+    _opts=() \
+    _location
+  _location="$( \
+    mktemp)"
+  shift \
+    2
+  _cmd=(
+    "$@"
+  )
+  [[ "${_local}" == "" ]] && \
+    _opts+=(
+      -e 
+        '^Oa'
+    )
+  _write_setting \
+    "" \
+    "log" \
+    "${_location}"
+  screen \
+    -S \
+      "${_session}" \
+    -L \
+      -Logfile \
+        "${_location}" \
+    "${_opts[@]}" \
+    "${_cmd[*]}"
+}
+
+_screen_exists() {
+  local \
+    _session="${1}" \
+    _exists
+  _exists="$( \
+    screen \
+      -ls | \
+    grep \
+      "${_session}")"
+  if [[ "${_exists}" != "" ]]; then
+    _msg_info \
+      "found ${_exists}"
+  fi
+}
+
 _screen_run() {
   local \
     _session="${1}" \
@@ -47,16 +94,17 @@ _screen_run() {
     _location
   _location="$( \
     mktemp)"
-  _stuff='stuff '"${_cmd}"'\015'
+  _stuff="stuff \"""${_cmd}""\"\015"
   screen \
     -x \
       "${_session}" \
     -L \
       -Logfile \
         "${_location}" \
-    -m \
     -d \
+    -m \
     -X \
+      eval \
       "${_stuff}"
   _msg_info \
     "session ${_session}: running ${_cmd}"
@@ -64,6 +112,31 @@ _screen_run() {
     "output saved to: ${_location}"
   cat \
     "${_location}"
+}
+
+_session_is_local() {
+  local \
+    _host="${1}"
+  if [[ "${_host}" == "$(hotnamectl)" ]]; then
+    echo \
+      yup
+  fi
+}
+
+_session_remote_is_connected() {
+  local \
+    _session="${1}" \
+    _host="${2}"
+    _hostname="$( \
+      _screen_run \
+        "${_session}" \
+        "hotnamectl")"
+  _msg_info \
+    "session ${_session} is on ${_hostname}"
+  if [[ "${_host}" == "${_hostname}" ]]; then
+    echo \
+      yup
+  fi
 }
 
 # ssssssssssss
@@ -75,26 +148,26 @@ _sss() {
     _host="${1}" \
     _session="${2}" \
     _cmd=() \
-    _session_name \
-    _existing
+    _session_name
   shift \
     2
   _cmd=(
     "$@"
   )
   _session_name="${_host}_${_session}"
-  echo hi
-  _existing="$( \
-    screen \
-      -ls | \
-    grep \
+  _exists="$( \
+    _screen_exists \
       "${_session_name}")"
-  _msg_info \
-    "found ${_existing}"
-  [[ "${_existing}" != "" ]] && \
-    _screen_run \
+  if [[ "${_exists}" != "" ]]; then
+    _session_remote_is_connected \
       "${_session_name}" \
-      "hotnamectl"
+      "${_host}"
+  else
+    _screen_new \
+      "${_session}" \
+      "$(_session_is_local \
+           "${_host}")"
+  fi
   # _read_conf
 }
 
@@ -246,6 +319,10 @@ _set \
   "name" \
   "${1}"
 _set_overrides
+_config_user_init \
+  "$(_get \
+       "app" \
+       "name")"
 _sss \
   "$(_get \
       "target" \
