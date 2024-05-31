@@ -39,6 +39,49 @@ _requirements() {
   done
 }
 
+_get_conf_path() {
+  local \
+    _dir \
+    _conf
+  _dir="${HOME}/.config/$( \
+    _get \
+      "app" \
+      "name")"
+  _conf="${_dir}/$( \
+    _get \
+      "target" \
+      "host")/$( \
+      _get \
+        "session" \
+        "name").cfg"
+  echo \
+    "${_conf}"
+}
+
+_make_conf() {
+  local \
+    _conf="${1}" \
+    _modifier="${2}" \
+    _remote_modifier="${3}"
+  mkdir \
+    -p \
+    "$(dirname \
+         "${_conf}")"
+  if [[ "${_modifier}" == "" ]]; then
+    _modifier="A"
+  fi
+  if [[ "${_remote_modifier}" == "" ]]; then
+    _remote_modifier="O"
+  fi
+  echo \
+    "modifier=${_modifier}" >> \
+    "${_conf}"
+echo \
+    "remote_modifier=${_modifier}" >> \
+    "${_conf}"
+
+}
+
 _screen_new() {
   local \
     _session="${1}" \
@@ -58,7 +101,7 @@ _screen_new() {
         '^Oa'
     )
   _write_setting \
-    "" \
+    "$(_get_conf_path)" \
     "log" \
     "${_location}"
   screen \
@@ -148,6 +191,7 @@ _sss() {
     _host="${1}" \
     _session="${2}" \
     _cmd=() \
+    _msg=() \
     _session_name
   shift \
     2
@@ -163,6 +207,12 @@ _sss() {
       "${_session_name}" \
       "${_host}"
   else
+    _msg=(
+      "session ${_session_name}"
+      "not found, creating"
+    )
+    _msg_info \
+      "${_msg[*]}"
     _screen_new \
       "${_session}" \
       "$(_session_is_local \
