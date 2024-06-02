@@ -112,6 +112,7 @@ _screen_new() {
     _local="${2}" \
     _opts=() \
     _dynssh_opts=() \
+    _remote_opts=() \
     _modifier \
     _remote_modifier \
     _location
@@ -140,6 +141,10 @@ _screen_new() {
       _read_setting \
         "$(_get_conf_path)" \
         "remote_modifier")"
+    _remote_opts+=(
+      -e 
+        "^${_remote_modifier}a"
+    )
     if [[ "${quiet}" != "n" ]]; then
       _dynssh_opts+=(
         -v
@@ -152,7 +157,9 @@ _screen_new() {
           "${_host}"
         --
         "${_host}"
-        "${_cmd[@]}"
+        screen
+          "${_remote_opts[@]}"
+          "${_cmd[@]}"
     )
   fi
   _write_setting \
