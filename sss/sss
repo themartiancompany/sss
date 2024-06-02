@@ -243,33 +243,6 @@ _sss() {
       "$(_session_is_local \
            "${_host}")"
   fi
-  # _read_conf
-}
-
-_read_conf() {
-  local \
-    _conf \
-    _dir \
-    _hostname=""
-  _conf="${_conf_dir}/screens.cfg"
-  _get__conf \
-    "${_conf}"
-  _cfg="$( \
-    cat \
-      "${_conf}")"
-  _cfg="$( \
-    echo \
-      "${_cfg}" | \
-      sed \
-        -e \
-          "/# */d" | \
-        grep \
-          "=" )"
-  [[ "${_cfg}" == '' ]] && \
-    echo \
-      "ERROR: empty configuration file!" && \
-    return \
-      1
 }
 
 _check_cmd_override(){
