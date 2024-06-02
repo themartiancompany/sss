@@ -111,6 +111,7 @@ _screen_new() {
     _session="${1}" \
     _local="${2}" \
     _opts=() \
+    _dynssh_opts=() \
     _modifier \
     _remote_modifier \
     _location
@@ -139,6 +140,20 @@ _screen_new() {
       _read_setting \
         "$(_get_conf_path)" \
         "remote_modifier")"
+    if [[ "${quiet}" != "n" ]]; then
+      _dynssh_opts+=(
+        -v
+      )
+    fi
+    _cmd=(
+      dynssh
+        "${_dynssh_opts[@]}"
+        -t
+          "${_host}"
+        --
+        "${_host}"
+        "${_cmd[@]}"
+    )
   fi
   _write_setting \
     "$(_get_conf_path)" \
@@ -151,7 +166,7 @@ _screen_new() {
       -Logfile \
         "${_location}" \
     "${_opts[@]}" \
-    "${_cmd[*]}"
+    "${_cmd[@]}"
 }
 
 _screen_exists() {
