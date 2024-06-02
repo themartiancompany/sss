@@ -181,9 +181,9 @@ _screen_new() {
       "${_remote_log}"
     _remote_opts+=(
       "${_screen_opts[@]}"
-      # -L \
-      #   -Logfile
-      #     "${_remote_log}"
+      -L \
+        -Logfile
+          "${_remote_log}"
       -e 
         "^${_remote_hotkey}a"
     )
@@ -201,6 +201,7 @@ _screen_new() {
         -t
           "${_host}"
         --
+        -t
         "${_host}"
         screen
           "${_remote_opts[@]}"
