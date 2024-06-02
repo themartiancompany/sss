@@ -342,11 +342,13 @@ _requirements
 # shellcheck disable=SC2034
 while \
   getopts \
-    't:cvh?' \
+    't:m:M:cvh?' \
     arg; do
   case \
     "${arg}" in
     t) override_target_host="${OPTARG}" ;;
+    m) override_host_modifier="${OPTARG}" ;;
+    M) override_session_modifier="${OPTARG}" ;;
     c) override_color="y" ;;
     v) override_quiet="n" ;;
     h|?) _set_overrides && \
