@@ -17,6 +17,7 @@ source \
 _global_variables() {
   target_host=""
   session_name=""
+  session_command=""
   color=""
   quiet=""
 }
@@ -38,6 +39,25 @@ _requirements() {
       "${_dep}"
   done
 }
+
+# Shows configuration options.
+_show_config() {
+  local \
+    _sss_date
+  TZ=UTC \
+    printf \
+      -v _sss_date \
+      '%(%FT%R%z)T' \
+      "${SOURCE_DATE_EPOCH}"
+  _msg_info "$(_get "app" "name") configuration"
+  _msg_info "                 sss date:   $(_get "_resolve" "date")"
+  _msg_info "              Target host:   $(_get "target" "host")"
+  _msg_info "                  Session:   $(_get "session" "name")"
+  _msg_info "                  Command:   $(_get "target" "network")"
+  _msg_info "                  Gateway:   $(_get "target" "gateway")"
+}
+
+
 
 _get_conf_path() {
   local \
@@ -116,7 +136,8 @@ _screen_new() {
     _remote_opts=() \
     _modifier \
     _remote_modifier \
-    _log
+    _log \
+    _remote_log
   shift \
     2
   _cmd=(
@@ -136,6 +157,10 @@ _screen_new() {
     -e 
       "^${_modifier}a"
   )
+  _screen_opts+=(
+    -S
+      "${_session}"
+  )
   if [[ "${_local}" != "" ]]; then
     _msg_info \
       "local session"
@@ -146,7 +171,17 @@ _screen_new() {
       _read_setting \
         "$(_get_conf_path)" \
         "remote_modifier")"
+    _remote_log="$( \
+      mktemp)"
+    _write_setting \
+      "$(_get_conf_path)" \
+      "remote_log" \
+      "${_remote_log}"
     _remote_opts+=(
+      "${_screen_opts[@]}"
+      -L \
+        -Logfile
+          "${_remote_log}"
       -e 
         "^${_remote_modifier}a"
     )
@@ -155,25 +190,24 @@ _screen_new() {
         -v
       )
     fi
+    _msg_info \
+      "connecting to ${_host} with dynssh options ${_dynssh_opts[*]}"
     _cmd=(
       dynssh
         "${_dynssh_opts[@]}"
         -t
           "${_host}"
-        --
         "${_host}"
         screen
           "${_remote_opts[@]}"
           "${_cmd[@]}"
     )
   fi
-  _screen_opts=(
-    -S \
-      "${_session}" \
-    -L \
-      -Logfile \
-        "${_log}" \
-    "${_opts[@]}" \
+  _screen_opts+=(
+    -L
+      -Logfile
+        "${_log}"
+    "${_opts[@]}"
   )
   screen \
     "${_screen_opts[@]}" \
@@ -410,6 +444,11 @@ _set \
   "session" \
   "name" \
   "${1}"
+shift \
+  1
+session_command=(
+  "$@"
+)
 _set_overrides
 _config_user_init \
   "$(_get \
@@ -421,6 +460,7 @@ _sss \
       "host")" \
   "$(_get \
       "session" \
-      "name")"
+      "name")" \
+  "${session_command[@]}"
 
 # vim:set sw=2 sts=-1 et:
