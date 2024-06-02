@@ -58,15 +58,37 @@ _get_conf_path() {
     "${_conf}"
 }
 
+_get_conf() {
+  local \
+    _host="${1}" \
+    _device="${2}" \
+    _conf \
+    _cfg \
+    _msg=()
+  _conf="$(_get_conf_path)"
+  if [ ! -e  "${_conf}" ]; then
+    _make_conf \
+      "${_conf}" \
+      "" \
+      ""
+  fi
+  _check_conf_permissions \
+    "${_conf}"
+  _is_conf_empty \
+    "${_conf}"
+}
+
 _make_conf() {
   local \
     _conf="${1}" \
     _modifier="${2}" \
-    _remote_modifier="${3}"
+    _remote_modifier="${3}" \
+    _msg=()
   mkdir \
     -p \
-    "$(dirname \
-         "${_conf}")"
+    "$( \
+      dirname \
+        "${_conf}")"
   if [[ "${_modifier}" == "" ]]; then
     _modifier="A"
   fi
@@ -79,7 +101,14 @@ _make_conf() {
 echo \
     "remote_modifier=${_modifier}" >> \
     "${_conf}"
-
+  _msg=(
+    'Generating config file'
+    "${_conf}: setting modifiers"
+    "${_modifier} and"
+    "${_remote_modifier}."
+  )
+  msg_info \
+    "${_msg[*]}"
 }
 
 _screen_new() {
