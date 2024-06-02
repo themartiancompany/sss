@@ -112,6 +112,7 @@ _screen_new() {
     _local="${2}" \
     _opts=() \
     _modifier \
+    _remote_modifier \
     _location
   _location="$( \
     mktemp)"
@@ -120,15 +121,24 @@ _screen_new() {
   _cmd=(
     "$@"
   )
-  if [[ "${_local}" == "" ]]; then
-    _modifier="$( \
+  _modifier="$( \
+    _read_setting \
+      "$(_get_conf_path)" \
+      "modifier")"
+  _opts+=(
+    -e 
+      "^${_modifier}a"
+  )
+  if [[ "${_local}" != "" ]]; then
+    _msg_info \
+      "local session"
+  elif [[ "${_local}" == "" ]]; then
+    _msg_info \
+      "remote session"
+    _remote_modifier="$( \
       _read_setting \
         "$(_get_conf_path)" \
-        "modifier")"
-    _opts+=(
-      -e 
-        "^${_modifier}a"
-    )
+        "remote_modifier")"
   fi
   _write_setting \
     "$(_get_conf_path)" \
