@@ -52,10 +52,12 @@ _show_config() {
       '%(%FT%R%z)T' \
       "${SOURCE_DATE_EPOCH}"
   _msg_info "$(_get "app" "name") configuration"
-  _msg_info "                 sss date:   $(_get "_resolve" "date")"
+  _msg_info "                 sss date:   $(_get "_sss" "date")"
   _msg_info "              Target host:   $(_get "target" "host")"
   _msg_info "                  Session:   $(_get "session" "name")"
-  _msg_info "                  Command:   $(_get "session" "command")"
+  _msg_info "              Host hotkey:   $(_get "host" "hotkey")"
+  _msg_info "           Session hotkey:   $(_get "session" "hotkey")"
+  _msg_info "                  Command:   ${session_command[*]}"
 }
 
 _get_conf_path() {
@@ -106,7 +108,7 @@ _make_conf() {
   if [[ "${_hotkey}" == "" ]]; then
     _hotkey="A"
   fi
-  if [[ "${_remote_modifier}" == "" ]]; then
+  if [[ "${_remote_hotkey}" == "" ]]; then
     _remote_hotkey="O"
   fi
   echo \
@@ -117,8 +119,8 @@ _make_conf() {
     "${_conf}"
   _msg=(
     'Generating config file'
-    "${_conf}: setting modifiers"
-    "${_modifier} and"
+    "${_conf}: setting hotkeys"
+    "${_hotkey} and"
     "${_remote_hotkey}."
   )
   _msg_info \
@@ -131,6 +133,7 @@ _screen_new() {
     _local="${2}" \
     _hotkey="${3}" \
     _remote_hotkey="${4}" \
+    _cmd=() \
     _opts=() \
     _screen_opts=() \
     _dynssh_opts=() \
@@ -138,7 +141,7 @@ _screen_new() {
     _log \
     _remote_log
   shift \
-    2
+    4
   _cmd=(
     "$@"
   )
@@ -154,7 +157,7 @@ _screen_new() {
       "hotkey")"
   _opts+=(
     -e 
-      "^${_modifier}a"
+      "^${_hotkey}a"
   )
   _screen_opts+=(
     -S
@@ -166,10 +169,10 @@ _screen_new() {
   elif [[ "${_local}" == "" ]]; then
     _msg_info \
       "remote session"
-    _remote_modifier="$( \
+    _remote_hotkey="$( \
       _read_setting \
         "$(_get_conf_path)" \
-        "remote_modifier")"
+        "remote_hotkey")"
     _remote_log="$( \
       mktemp)"
     _write_setting \
@@ -178,11 +181,11 @@ _screen_new() {
       "${_remote_log}"
     _remote_opts+=(
       "${_screen_opts[@]}"
-      -L \
-        -Logfile
-          "${_remote_log}"
+      # -L \
+      #   -Logfile
+      #     "${_remote_log}"
       -e 
-        "^${_remote_modifier}a"
+        "^${_remote_hotkey}a"
     )
     if [[ "${quiet}" != "n" ]]; then
       _dynssh_opts+=(
@@ -193,9 +196,11 @@ _screen_new() {
       "connecting to ${_host} with dynssh options ${_dynssh_opts[*]}"
     _cmd=(
       dynssh
-        "${_dynssh_opts[@]}"
+        # "${_dynssh_opts[@]}"
+        -v
         -t
           "${_host}"
+        --
         "${_host}"
         screen
           "${_remote_opts[@]}"
@@ -210,7 +215,13 @@ _screen_new() {
   )
   screen \
     "${_screen_opts[@]}" \
-    "${_cmd[@]}"
+    "${_cmd[@]}" || \
+    echo \
+      wut
+  _msg_info \
+    "$( \
+      cat \
+        "${_log}")"
 }
 
 _screen_exists() {
@@ -249,11 +260,11 @@ _screen_run() {
       eval \
       "${_stuff}"
   _msg_info \
-    "session ${_session}: running ${_cmd}"
+    "session ${_session}: running ${_cmd[*]}"
   _msg_info \
-    "output saved to: ${_location}"
+    "output saved to: ${_log}"
   cat \
-    "${_location}"
+    "${_log}"
 }
 
 _session_is_local() {
@@ -318,7 +329,10 @@ _sss() {
     _screen_new \
       "${_session}" \
       "$(_session_is_local \
-           "${_host}")"
+           "${_host}")" \
+      "${_hotkey}" \
+      "${_remote_hotkey}" \
+      "${_cmd[@]}"
   fi
 }
 
@@ -472,6 +486,12 @@ _sss \
   "$(_get \
       "session" \
       "name")" \
+  "$(_get \
+      "host" \
+      "hotkey")" \
+  "$(_get \
+      "session" \
+      "hotkey")" \
   "${session_command[@]}"
 
 # vim:set sw=2 sts=-1 et:
