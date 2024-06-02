@@ -18,6 +18,8 @@ _global_variables() {
   target_host=""
   session_name=""
   session_command=""
+  host_hotkey=""
+  session_hotkey=""
   color=""
   quiet=""
 }
@@ -53,11 +55,8 @@ _show_config() {
   _msg_info "                 sss date:   $(_get "_resolve" "date")"
   _msg_info "              Target host:   $(_get "target" "host")"
   _msg_info "                  Session:   $(_get "session" "name")"
-  _msg_info "                  Command:   $(_get "target" "network")"
-  _msg_info "                  Gateway:   $(_get "target" "gateway")"
+  _msg_info "                  Command:   $(_get "session" "command")"
 }
-
-
 
 _get_conf_path() {
   local \
@@ -96,31 +95,31 @@ _get_conf() {
 _make_conf() {
   local \
     _conf="${1}" \
-    _modifier="${2}" \
-    _remote_modifier="${3}" \
+    _hotkey="${2}" \
+    _remote_hotkey="${3}" \
     _msg=()
   mkdir \
     -p \
     "$( \
       dirname \
         "${_conf}")"
-  if [[ "${_modifier}" == "" ]]; then
-    _modifier="A"
+  if [[ "${_hotkey}" == "" ]]; then
+    _hotkey="A"
   fi
   if [[ "${_remote_modifier}" == "" ]]; then
-    _remote_modifier="O"
+    _remote_hotkey="O"
   fi
   echo \
-    "modifier=${_modifier}" >> \
+    "hotkey=${_hotkey}" >> \
     "${_conf}"
   echo \
-    "remote_modifier=${_modifier}" >> \
+    "remote_hotkey=${_remote_hotkey}" >> \
     "${_conf}"
   _msg=(
     'Generating config file'
     "${_conf}: setting modifiers"
     "${_modifier} and"
-    "${_remote_modifier}."
+    "${_remote_hotkey}."
   )
   _msg_info \
     "${_msg[*]}"
@@ -130,12 +129,12 @@ _screen_new() {
   local \
     _session="${1}" \
     _local="${2}" \
+    _hotkey="${3}" \
+    _remote_hotkey="${4}" \
     _opts=() \
     _screen_opts=() \
     _dynssh_opts=() \
     _remote_opts=() \
-    _modifier \
-    _remote_modifier \
     _log \
     _remote_log
   shift \
@@ -149,10 +148,10 @@ _screen_new() {
     "$(_get_conf_path)" \
     "log" \
     "${_log}"
-  _modifier="$( \
+  _hotkey="$( \
     _read_setting \
       "$(_get_conf_path)" \
-      "modifier")"
+      "hotkey")"
   _opts+=(
     -e 
       "^${_modifier}a"
@@ -290,11 +289,13 @@ _sss() {
   local \
     _host="${1}" \
     _session="${2}" \
+    _hotkey="${3}" \
+    _remote_hotkey="${4}" \
     _cmd=() \
     _msg=() \
     _session_name
   shift \
-    2
+    4
   _cmd=(
     "$@"
   )
@@ -359,6 +360,14 @@ _set_overrides() {
     "target" \
     "host" \
     "$(hotnamectl)"
+  _set_override \
+    "host" \
+    "hotkey" \
+    "A"
+  _set_override \
+    "session" \
+    "hotkey" \
+    "O"
   if [[ -v override_color ]]; then
     color="${override_color}"
   elif [[ -z "${color}" ]]; then
@@ -390,10 +399,11 @@ Usage:
     <session_name>
   options:
      -t                   Target host.
-                          Default: $( \
-                            _get \
-                              "target" \
-                              "host")
+                          Default: $(_get "target" "host")
+     -m                   Host keyboard hotkey
+                          Default: $(_get "host" "hotkey")
+     -M                   Session keyboard hotkey.
+                          Default: $(_get "session" "hotkey")
      -c                   Colors.
      -h                   This message.
      -v                   Enable verbose output
@@ -417,8 +427,8 @@ while \
   case \
     "${arg}" in
     t) override_target_host="${OPTARG}" ;;
-    m) override_host_modifier="${OPTARG}" ;;
-    M) override_session_modifier="${OPTARG}" ;;
+    m) override_host_hotkey="${OPTARG}" ;;
+    M) override_session_hotkey="${OPTARG}" ;;
     c) override_color="y" ;;
     v) override_quiet="n" ;;
     h|?) _set_overrides && \
@@ -454,6 +464,7 @@ _config_user_init \
   "$(_get \
        "app" \
        "name")"
+_show_config
 _sss \
   "$(_get \
       "target" \
