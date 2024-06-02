@@ -111,18 +111,23 @@ _screen_new() {
     _session="${1}" \
     _local="${2}" \
     _opts=() \
+    _screen_opts=() \
     _dynssh_opts=() \
     _remote_opts=() \
     _modifier \
     _remote_modifier \
-    _location
-  _location="$( \
-    mktemp)"
+    _log
   shift \
     2
   _cmd=(
     "$@"
   )
+  _log="$( \
+    mktemp)"
+  _write_setting \
+    "$(_get_conf_path)" \
+    "log" \
+    "${_log}"
   _modifier="$( \
     _read_setting \
       "$(_get_conf_path)" \
@@ -162,17 +167,16 @@ _screen_new() {
           "${_cmd[@]}"
     )
   fi
-  _write_setting \
-    "$(_get_conf_path)" \
-    "log" \
-    "${_location}"
-  screen \
+  _screen_opts=(
     -S \
       "${_session}" \
     -L \
       -Logfile \
-        "${_location}" \
+        "${_log}" \
     "${_opts[@]}" \
+  )
+  screen \
+    "${_screen_opts[@]}"
     "${_cmd[@]}"
 }
 
