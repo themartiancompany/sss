@@ -176,7 +176,7 @@ _screen_new() {
     "${_opts[@]}" \
   )
   screen \
-    "${_screen_opts[@]}"
+    "${_screen_opts[@]}" \
     "${_cmd[@]}"
 }
 
